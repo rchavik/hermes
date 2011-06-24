@@ -1,0 +1,3 @@
+[submodule "vendors/messenger-sdk-php"]
+	path = vendors/messenger-sdk-php
+	url = git://github.com/yahoo/messenger-sdk-php.git
