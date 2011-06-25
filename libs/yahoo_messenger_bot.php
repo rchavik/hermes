@@ -1,20 +1,21 @@
 <?php
 declare(ticks=1);
 
-require 'config.php';
-require 'jymengine.class.php';
+require '../vendors/messenger-sdk-php/jymengine.class.php';
 
-class YahooMessengerDaemon {
+class YahooMessengerBot {
 
 	var $engine = false;
 
 	var $seq = -1;
 
-	function __construct($consumer, $secret, $username, $password, $debug = false) {
+	var $interval = 5; // minimum is 5 seconds, lower values will risk denial
 
+	function __construct($consumer, $secret, $username, $password, $debug = false) {
 		pcntl_signal(SIGTERM,  array(&$this, 'disconnect'));
 		pcntl_signal(SIGINT,  array(&$this, 'disconnect'));
-		$this->engine = new JYMEngine(CONSUMER_KEY, SECRET_KEY, USERNAME, PASSWORD);
+		$this->username = $username;
+		$this->engine = new JYMEngine($consumer, $secret, $username, $password);
 		$this->engine->debug = $debug;
 	}
 
@@ -22,30 +23,35 @@ class YahooMessengerDaemon {
 		echo $message . PHP_EOL;
 	}
 
+	function debug($message) {
+		if ($this->engine->debug) {
+			$this->log($message);
+		}
+	}
+
 	function connect() {
 		$engine =& $this->engine;
-		if ($engine->debug) echo '> Fetching request token'. PHP_EOL;
+		$this->debug('> Fetching request token');
 		if (!$engine->fetch_request_token()) die('Fetching request token failed');
 
-		if ($engine->debug) echo '> Fetching access token'. PHP_EOL;
+		$this->debug('> Fetching access token');
 		if (!$engine->fetch_access_token()) die('Fetching access token failed');
 
-		if ($engine->debug) echo '> Signon as: '. USERNAME. PHP_EOL;
+		$this->debug('> Signon as: '. $this->username);
 		if (!$engine->signon()) die('Signon failed');
 
 	}
 
 	function disconnect($sig) {
 		$this->continue = false;
-		exit;
 	}
 
 	function handleBuddyAuthorize($val) {
 		//incoming contact request
 
 		$engine =& $this->engine;
-		if ($engine->debug) echo PHP_EOL. 'Accept buddy request from: '. $val['sender']. PHP_EOL;
-		if ($engine->debug) echo '----------'. PHP_EOL;
+		$this->debug('Accept buddy request from: '. $val['sender']);
+		$this->debug('----------');
 		if (!$engine->response_contact($val['sender'], true, 'Welcome to my list')) {
 			$engine->delete_contact($val['sender']);
 			$engine->response_contact($val['sender'], true, 'Welcome to my list');
@@ -56,20 +62,20 @@ class YahooMessengerDaemon {
 		//contact list
 		$engine =& $this->engine;
 		if (!isset($val['contact'])) return;;
-		if ($engine->debug) echo PHP_EOL. 'Contact list: '. PHP_EOL;
+		$this->debug('Contact list: ');
 
 		foreach ($val['contact'] as $item) {
-			if ($engine->debug) echo $item['sender']. PHP_EOL;
+			$this->debug($item['sender']);
 		}
-		if ($engine->debug) echo '----------'. PHP_EOL;
+		$this->debug('----------');
 	}
 
 	function handleMessage($val) {
 		//incoming message
 		$engine =& $this->engine;
-		if ($engine->debug) echo '+ Incoming message from: "'. $val['sender']. '" on "'. date('H:i:s', $val['timeStamp']). '"'. PHP_EOL;
-		if ($engine->debug) echo '   '. $val['msg']. PHP_EOL;
-		if ($engine->debug) echo '----------'. PHP_EOL;
+		$this->debug('+ Incoming message from: "'. $val['sender']. '" on "'. date('H:i:s', $val['timeStamp']). '"');
+		$this->debug('   '. $val['msg']);
+		$this->debug('----------');
 
 		$words = explode(' ', trim(strtolower($val['msg'])));
 		$command = strtolower($words[0]);
@@ -84,18 +90,19 @@ class YahooMessengerDaemon {
 		}
 
 		//send message
-		if ($engine->debug) echo '> Sending reply message '. PHP_EOL;
-		if ($engine->debug) echo '    '. $out. PHP_EOL;
-		if ($engine->debug) echo '----------'. PHP_EOL;
+		$this->debug('> Sending reply message ');
+		$this->debug('    '. $out);
+		$this->debug('----------');
 		$engine->send_message($val['sender'], json_encode($out));
 		return $out;
 	}
 
 	function get($seq) {
 		static $wait = 10;
-		$resp = $engine->fetch_long_notification($seq);
+		$engine =& $this->engine;
+		$resp = $engine->fetch_notification($seq);
 		if (!isset($resp)) {
-			error_log('empty response');
+			$this->log('empty response');
 			sleep($wait);
 			$wait = $wait > 600 ? $wait * 2 : 10;
 			return false;
@@ -103,20 +110,23 @@ class YahooMessengerDaemon {
 
 		if ($resp === false) {
 			if ($engine->get_error() != -10) {
-				if ($engine->debug) echo '> Fetching access token'. PHP_EOL;
+				$this->debug('> Fetching access token');
 				if (!$engine->fetch_access_token()) die('Fetching access token failed');				
-				if ($engine->debug) echo '> Signon as: '. USERNAME. PHP_EOL;
+				$this->debug('> Signon as: '. $this->username);
 				if (!$engine->signon(date('H:i:s'))) die('Signon failed');
 				$this->seq = -1;
 			}
 			return false;
 		}
+		return $resp;
 	}
 
 	function run() {
-		$continue = true;
+		$this->continue = true;
 		$statusIdle = false;
-		while ( $continue && $resp = $this->get($this->seq+1) ) {
+		$engine =& $this->engine;
+		while ( $this->continue ) {
+			if (($resp = $this->get($this->seq+1)) === false) { continue; }
 			if (!$statusIdle) { $engine->change_presence(' ', 2); $statusIdle = true; }
 
 			foreach ($resp as $row) {
@@ -135,6 +145,7 @@ class YahooMessengerDaemon {
 					}
 				}
 			}
+			sleep($this->interval);
 		}
 		$engine->signoff();
 		$this->log("\ndaemon terminated.\n");
