@@ -1,26 +1,44 @@
 <?php
 declare(ticks=1);
 
-require '../vendors/messenger-sdk-php/jymengine.class.php';
+App::import('Vendor', 'JymEngine', array('file' => 'messenger-sdk-php' . DS . 'jymengine.class.php'));
 
-class YahooMessengerBot {
+class YahooMessengerBot extends Object {
 
-	var $engine = false;
+	private $engine = false;
 
-	var $seq = -1;
+	private $seq = -1;
 
-	var $interval = 5; // minimum is 5 seconds, lower values will risk denial
+	private $interval = 5; // minimum is 5 seconds, lower values will risk denial
 
-	function __construct($consumer, $secret, $username, $password, $debug = false) {
+	private $controller = false;
+
+	private $connected = false;
+
+	private $config = false;
+
+	function __construct(&$controller = null) {
+		$this->controller = $controller;
+		$this->interval = $this->interval >= 5 ? $this->interval : 5;
+	}
+
+	function init($config) {
+		$config = Set::merge(array(
+			'username' => false,
+			'password' => false,
+			'consumer' => false,
+			'secret' => false,
+			'debug' => false,
+			'help' => false,
+			), $config);
+		$this->config = $config;
+		extract($config);
+
 		pcntl_signal(SIGTERM,  array(&$this, 'disconnect'));
 		pcntl_signal(SIGINT,  array(&$this, 'disconnect'));
 		$this->username = $username;
 		$this->engine = new JYMEngine($consumer, $secret, $username, $password);
 		$this->engine->debug = $debug;
-	}
-
-	function log($message) {
-		echo $message . PHP_EOL;
 	}
 
 	function debug($message) {
@@ -39,6 +57,7 @@ class YahooMessengerBot {
 
 		$this->debug('> Signon as: '. $this->username);
 		if (!$engine->signon()) die('Signon failed');
+		$this->connected = true;
 
 	}
 
@@ -70,6 +89,9 @@ class YahooMessengerBot {
 		$this->debug('----------');
 	}
 
+/** Process incoming message
+ *  @return void
+ */
 	function handleMessage($val) {
 		//incoming message
 		$engine =& $this->engine;
@@ -81,20 +103,19 @@ class YahooMessengerBot {
 		$command = strtolower($words[0]);
 		switch ($command) {
 		case 'help':
-			$out  = 'This is Xintesa notification daemon'. PHP_EOL;
-			$out .= '  To get recent news from yahoo type: news'. PHP_EOL;
-			$out .= '  To get recent entertainment news from yahoo type: omg'. PHP_EOL;
+			$out  = $this->config['help'];
 			break;
 		default:
 			$out = false;
 		}
 
-		//send message
-		$this->debug('> Sending reply message ');
-		$this->debug('    '. $out);
-		$this->debug('----------');
-		$engine->send_message($val['sender'], json_encode($out));
-		return $out;
+		if ($out !== false) {
+			//send message
+			$this->debug('> Sending reply message ');
+			$this->debug('    '. $out);
+			$this->debug('----------');
+			$engine->send_message($val['sender'], json_encode($out));
+		}
 	}
 
 	function get($seq) {
@@ -122,7 +143,10 @@ class YahooMessengerBot {
 	}
 
 	function run() {
+		if (!$this->connected) { $this->connect(); }
+
 		$this->continue = true;
+
 		$statusIdle = false;
 		$engine =& $this->engine;
 		while ( $this->continue ) {
@@ -145,10 +169,11 @@ class YahooMessengerBot {
 					}
 				}
 			}
+			$this->log('sleeping for: ' . $this->interval . ' secs.');
 			sleep($this->interval);
 		}
 		$engine->signoff();
-		$this->log("\ndaemon terminated.\n");
+		$this->log("daemon terminated.");
 	}
 
 }
