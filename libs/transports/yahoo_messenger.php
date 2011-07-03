@@ -19,7 +19,7 @@ class YahooMessenger extends Object {
 
 	private $config = false;
 
-	private $processor = false;
+	private $bot = false;
 
 	function __construct(&$controller = null) {
 		$this->controller = $controller;
@@ -34,16 +34,22 @@ class YahooMessenger extends Object {
 			'secret' => false,
 			'debug' => false,
 			'help' => false,
-			'processor' => false,
+			'bot' => false,
 			), $config);
 		$this->config = $config;
 		extract($config);
 
-		pcntl_signal(SIGTERM,  array(&$this, 'disconnect'));
-		pcntl_signal(SIGINT,  array(&$this, 'disconnect'));
+		pcntl_signal(SIGTERM,  array(&$this, 'stop'));
+		pcntl_signal(SIGINT,  array(&$this, 'stop'));
 		$this->username = $username;
 		$this->engine = new JYMEngine($consumer, $secret, $username, $password);
 		$this->engine->debug = $debug;
+
+		if ($bot !== false) {
+			$botClass = $bot . 'Bot';
+			App::import('Lib', $botClass);
+			$this->bot = new $botClass($this, $this->config);
+		}
 	}
 
 	function debug($message) {
@@ -62,12 +68,15 @@ class YahooMessenger extends Object {
 
 		$this->debug('> Signon as: '. $this->username);
 		if (!$engine->signon()) die('Signon failed');
-		$this->connected = true;
+		$this->continue = $this->connected = true;
 
 	}
 
-	function disconnect($sig) {
-		$this->continue = false;
+	function disconnect() {
+		$engine =& $this->engine;
+		$engine->signoff();
+		$this->connected = false;
+		$this->log("daemon terminated.");
 	}
 
 	function handleBuddyAuthorize($val) {
@@ -112,41 +121,33 @@ class YahooMessenger extends Object {
 			break;
 		default:
 			$out = false;
-			$method = 'process' . ucfirst($command);
-			if ($this->processor) {
-				if (property_exists($this->processor, 'process' . ucfirst($command))) {
-					$out = $this->processor->{$method}($val);
+			$method = 'process' . ucfirst(strtolower($command));
+			if ($this->bot) {
+				if (method_exists($this->bot, $method)) {
+					$out = $this->bot->{$method}($val);
 				}
 			} else {
-				$this->log('no processor configured');
+				$this->log('no bot configured');
 			}
 		}
 
 		if ($out !== false) {
 			//send message
-			$this->debug('> Sending reply message ');
-			$this->debug('    '. $out);
-			$this->debug('----------');
+			$this->log('> Sending reply message ');
+			$this->log('    '. $out);
+			$this->log('----------');
 			$engine->send_message($val['sender'], json_encode($out));
 		}
 	}
 
-	function run() {
+	function start() {
 		if (!$this->connected) { $this->connect(); }
 
 		$engine =& $this->engine;
-		$this->continue = true;
-		$statusIdle = false;
-
+		$engine->change_presence(' ', 2);
 		while ( $this->continue ) {
 			$resp = $this->engine->fetch_notification($this->seq+1);
-			if ($resp === false) {
-				sleep($this->interval);
-				continue;
-			}
-
-			if (!$statusIdle) { $engine->change_presence(' ', 2); $statusIdle = true; }
-
+			$resp = $resp === false ? array() : $resp;
 			foreach ($resp as $row) {
 				foreach ($row as $key=>$val) {
 					if ($val['sequence'] > $this->seq) {
@@ -166,10 +167,26 @@ class YahooMessenger extends Object {
 					}
 				}
 			}
+
+			if ($this->bot && method_exists($this->bot, 'outgoing')) {
+				$messages = $this->bot->outgoing();
+				$this->sendMessages($messages);
+			}
 			sleep($this->interval);
 		}
-		$engine->signoff();
-		$this->log("daemon terminated.");
+		$this->disconnect();
 	}
 
+	function stop() {
+		$this->continue = false;
+	}
+
+	public function sendMessages($messages) {
+		foreach ($messages as $message) {
+			if (empty($message['to']) || empty($message['message'])) {
+				continue;
+			}
+			$this->engine->send_message($message['to'], json_encode($message['message']));
+		}
+	}
 }
