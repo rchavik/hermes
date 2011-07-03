@@ -1,9 +1,11 @@
 <?php
 declare(ticks=1);
 
-App::import('Vendor', 'JymEngine', array('file' => 'messenger-sdk-php' . DS . 'jymengine.class.php'));
+App::import('Vendor', 'JymEngine',
+	array('file' => 'messenger-sdk-php' . DS . 'jymengine.class.php')
+);
 
-class YahooMessengerBot extends Object {
+class YahooMessenger extends Object {
 
 	private $engine = false;
 
@@ -16,6 +18,8 @@ class YahooMessengerBot extends Object {
 	private $connected = false;
 
 	private $config = false;
+
+	private $processor = false;
 
 	function __construct(&$controller = null) {
 		$this->controller = $controller;
@@ -30,6 +34,7 @@ class YahooMessengerBot extends Object {
 			'secret' => false,
 			'debug' => false,
 			'help' => false,
+			'processor' => false,
 			), $config);
 		$this->config = $config;
 		extract($config);
@@ -69,24 +74,24 @@ class YahooMessengerBot extends Object {
 		//incoming contact request
 
 		$engine =& $this->engine;
-		$this->debug('Accept buddy request from: '. $val['sender']);
-		$this->debug('----------');
+		$this->log('Accept buddy request from: '. $val['sender']);
+		$this->log('----------');
 		if (!$engine->response_contact($val['sender'], true, 'Welcome to my list')) {
 			$engine->delete_contact($val['sender']);
 			$engine->response_contact($val['sender'], true, 'Welcome to my list');
 		}
 	}
 
-	function handleBuddyInfo() {
+	function handleBuddyInfo($val) {
 		//contact list
 		$engine =& $this->engine;
 		if (!isset($val['contact'])) return;;
-		$this->debug('Contact list: ');
+		$this->log('Contact list: ');
 
 		foreach ($val['contact'] as $item) {
-			$this->debug($item['sender']);
+			$this->log($item['sender']);
 		}
-		$this->debug('----------');
+		$this->log('----------');
 	}
 
 /** Process incoming message
@@ -107,6 +112,14 @@ class YahooMessengerBot extends Object {
 			break;
 		default:
 			$out = false;
+			$method = 'process' . ucfirst($command);
+			if ($this->processor) {
+				if (property_exists($this->processor, 'process' . ucfirst($command))) {
+					$out = $this->processor->{$method}($val);
+				}
+			} else {
+				$this->log('no processor configured');
+			}
 		}
 
 		if ($out !== false) {
@@ -118,48 +131,32 @@ class YahooMessengerBot extends Object {
 		}
 	}
 
-	function get($seq) {
-		static $wait = 10;
-		$engine =& $this->engine;
-		$resp = $engine->fetch_notification($seq);
-		if (!isset($resp)) {
-			$this->log('empty response');
-			sleep($wait);
-			$wait = $wait > 600 ? $wait * 2 : 10;
-			return false;
-		}
-
-		if ($resp === false) {
-			if ($engine->get_error() != -10) {
-				$this->debug('> Fetching access token');
-				if (!$engine->fetch_access_token()) die('Fetching access token failed');				
-				$this->debug('> Signon as: '. $this->username);
-				if (!$engine->signon(date('H:i:s'))) die('Signon failed');
-				$this->seq = -1;
-			}
-			return false;
-		}
-		return $resp;
-	}
-
 	function run() {
 		if (!$this->connected) { $this->connect(); }
 
-		$this->continue = true;
-
-		$statusIdle = false;
 		$engine =& $this->engine;
+		$this->continue = true;
+		$statusIdle = false;
+
 		while ( $this->continue ) {
-			if (($resp = $this->get($this->seq+1)) === false) { continue; }
+			$resp = $this->engine->fetch_notification($this->seq+1);
+			if ($resp === false) {
+				sleep($this->interval);
+				continue;
+			}
+
 			if (!$statusIdle) { $engine->change_presence(' ', 2); $statusIdle = true; }
 
 			foreach ($resp as $row) {
 				foreach ($row as $key=>$val) {
-					if ($val['sequence'] > $this->seq) $this->seq = intval($val['sequence']);
+					if ($val['sequence'] > $this->seq) {
+						$this->seq = intval($val['sequence']);
+					}
 
 					$method = 'handle' . ucfirst($key);
 					switch ($key) {
 					case 'buddyInfo':
+					case 'buddyAuthorize':
 					case 'message':
 						$this->{$method}($val);
 						break;
@@ -169,7 +166,6 @@ class YahooMessengerBot extends Object {
 					}
 				}
 			}
-			$this->log('sleeping for: ' . $this->interval . ' secs.');
 			sleep($this->interval);
 		}
 		$engine->signoff();
