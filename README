@@ -1,0 +1,42 @@
+Hermes
+------
+
+A cakephp shell to intended to allow communication with Chat Services.
+Currently only works with Yahoo Messenger with messenger-sdk-php.
+
+Thanks to @neterslandreau for the name.
+
+Configuration
+-------------
+
+Retrieve messenger-sdk-php submodule:
+
+	git submodule init
+	git submodule update
+
+Configure your bot
+
+	Check example configuration in config/bots.default.php.  You need to get
+	your consumer and secret key from http://developers.yahoo.com.
+
+	Once your bots are configured, start it by issuing:
+
+		cake bots start <bot_nick>
+
+	There's only one bot: LameBot. You can find it in libs/bots/lame_bot.php.
+	It responds to incoming message that begins with 'about', and it will read
+	all files from $config['outgoing_directory]:
+
+		APP/tmp/outgoing/<outgoing_prefix>*.out
+
+	and send them out.  These files are automatically deleted once processed.
+
+	The .out files are TAB separated and contain two fields:
+
+		- destination nick
+		- message
+
+Btw, if you use this to spam, Kratos will hunt you down. :)
+
+Good luck and have fun.
+-- rchavik
