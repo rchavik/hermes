@@ -159,6 +159,7 @@ class YahooMessenger extends Object {
 
 		$engine =& $this->engine;
 		$engine->change_presence(' ', 2);
+		$this->_notifyMasters('All units Irene. I say again, Irene.');
 		while ( $this->continue ) {
 			$resp = $this->engine->fetch_notification($this->seq+1);
 			$resp = $resp === false ? array() : $resp;
@@ -194,7 +195,26 @@ class YahooMessenger extends Object {
 		$this->disconnect();
 	}
 
+	private function _notifyMasters($message) {
+		if (empty($this->config['masters'])) {
+			$masters = array();
+		} else {
+			$masters = is_array($this->config['masters'])
+				? $this->config['masters']
+				: array($this->config['masters']);
+		}
+		$messages = array();
+		foreach ($masters as $master) {
+			$messages[] = array(
+				'to' => $master,
+				'message' => $message,
+				);
+		}
+		$this->sendMessages($messages);
+	}
+
 	function stop() {
+		$this->_notifyMasters('Super 6-4 is Going Down. See you later.');
 		$this->continue = false;
 	}
 

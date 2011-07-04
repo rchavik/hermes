@@ -14,6 +14,7 @@ $config = array(
 			'bot' => 'Lame',
 			'outgoing_path' => TMP . 'outgoing',
 			'outgoing_prefix' => 'lame',
+			'masters' = 'nick2',
 			),
 
 		array(
@@ -27,6 +28,7 @@ $config = array(
 			'bot' => 'Lame',
 			'outgoing_path' => TMP . 'outgoing',
 			'outgoing_prefix' => 'lame',
+			'masters' => array('nick1', 'nick2'),
 			),
 
 		),
