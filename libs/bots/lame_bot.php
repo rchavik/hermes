@@ -33,11 +33,15 @@ class LameBot extends Object {
 		$files = preg_find($regex, $config['outgoing_path'], PREG_FIND_RETURNASSOC|PREG_FIND_SORTMODIFIED);
 		foreach ($files as $file => $fileInfo) {
 			$lines = file_get_contents($file);
+			unlink($file);
 			$debris = explode("\t", $lines, 2);
+			if (count($debris) !== 2) {
+				$this->log('Number of fields mismatch');
+				continue;
+			}
 			$to = trim($debris[0]);
 			$message = trim($debris[1]);
 			$outgoing[] = compact('to', 'message');
-			unlink($file);
 		}
 		return $outgoing;
 	}
