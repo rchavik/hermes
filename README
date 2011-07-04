@@ -1,7 +1,7 @@
 Hermes
 ------
 
-A cakephp shell to intended to allow communication with Chat Services.
+A cakephp shell intended to allow communication with Chat Services.
 Currently only works with Yahoo Messenger with messenger-sdk-php.
 
 Thanks to @neterslandreau for the name.
