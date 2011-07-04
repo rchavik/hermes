@@ -40,8 +40,10 @@ class LameBot extends Object {
 				continue;
 			}
 			$to = trim($debris[0]);
-			$message = trim($debris[1]);
-			$outgoing[] = compact('to', 'message');
+			$messages = str_split(trim($debris[1]), 2000);
+			foreach ($messages as $message) {
+				$outgoing[] = compact('to', 'message');
+			}
 		}
 		return $outgoing;
 	}
