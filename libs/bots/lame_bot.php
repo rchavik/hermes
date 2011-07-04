@@ -18,7 +18,7 @@ class LameBot extends Object {
 	}
 
 	public function processAbout() {
-		return 'about:blank';
+		return 'Hi, you can clone me from http://github.com/rchavik/hermes';
 	}
 
 	public function outgoing() {
