@@ -229,7 +229,6 @@ class YahooMessenger extends Object {
 		} else {
 			$type = 'error';
 		}
-		parent::log('type: ' . $type);
 		parent::log($msg, $type);
 	}
 
