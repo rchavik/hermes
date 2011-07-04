@@ -146,12 +146,17 @@ class YahooMessenger extends Object {
 
 		if ($out !== false) {
 			//send message
-			$this->log('> Sending reply message ');
-			$this->log('    '. $out);
-			$this->log('----------');
-			$this->stats['sent'] = ++$this->stats['sent'];
-			$engine->send_message($val['sender'], json_encode($out));
+			$this->send($val['sender'], $out);
 		}
+	}
+
+	function send($to, $message) {
+		$engine =& $this->engine;
+		$this->log('> Sending reply message ');
+		$this->log('    '. $message);
+		$this->log('----------');
+		$engine->send_message($to, json_encode($message));
+		$this->stats['sent'] = ++$this->stats['sent'];
 	}
 
 	function start() {
@@ -233,8 +238,7 @@ class YahooMessenger extends Object {
 			if (empty($message['to']) || empty($message['message'])) {
 				continue;
 			}
-			$this->engine->send_message($message['to'], json_encode($message['message']));
-			$this->stats['sent'] = ++$this->stats['sent'];
+			$this->send($message['to'], $message['message']);
 		}
 	}
 }
