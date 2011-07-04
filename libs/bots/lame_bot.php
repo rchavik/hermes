@@ -1,5 +1,6 @@
 <?php
 App::import('Vendor', 'preg_find');
+App::import('Helper', 'Time');
 
 class LameBot extends Object {
 
@@ -11,14 +12,25 @@ class LameBot extends Object {
 
 	private $config = false;
 
+	private $startTime = false;
+
 	function __construct(&$transporter, $config = array()) {
+		$this->startTime = time();
 		parent::__construct();
 		$this->transporter = $transporter;
 		$this->config = $config;
+		$this->TimeHelper = new TimeHelper;
 	}
 
 	public function processAbout() {
 		return 'Hi, you can clone me from http://github.com/rchavik/hermes';
+	}
+
+	public function processUptime() {
+		$secs = time() - $this->startTime;
+		$timeAgoInWords = $this->TimeHelper->timeAgoInWords($this->startTime);
+		$uptime = sprintf('I have been up for %d seconds (%s)', $secs, $timeAgoInWords);
+		return $uptime;
 	}
 
 	public function outgoing() {
