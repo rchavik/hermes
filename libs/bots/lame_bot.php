@@ -41,8 +41,8 @@ class LameBot extends Object {
 			$secs, $timeAgoInWords
 			);
 		$reply .= sprintf(
-			'during which I have received %d instant messages, ' .
-			'and sent %d replies.',
+			'during which I have received %d message(s), ' .
+			'and sent %d message(s).',
 			$stats['received'], $stats['sent']
 			);
 		return $reply;
