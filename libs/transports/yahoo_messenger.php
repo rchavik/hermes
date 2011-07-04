@@ -35,8 +35,10 @@ class YahooMessenger extends Object {
 			'debug' => false,
 			'help' => false,
 			'bot' => false,
+			'interval' => 5,
 			), $config);
 		$this->config = $config;
+		$this->interval = $config['interval'];
 		extract($config);
 
 		pcntl_signal(SIGTERM,  array(&$this, 'stop'));
