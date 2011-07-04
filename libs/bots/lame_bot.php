@@ -12,8 +12,6 @@ class LameBot extends Object {
 
 	private $config = false;
 
-	private $startTime = false;
-
 	function __construct(&$transporter, $config = array()) {
 		$this->startTime = time();
 		parent::__construct();
@@ -27,10 +25,27 @@ class LameBot extends Object {
 	}
 
 	public function processUptime() {
-		$secs = time() - $this->startTime;
+		$stats = $this->transporter->getStats();
+		$secs = time() - $stats['startTime'];
 		$timeAgoInWords = $this->TimeHelper->timeAgoInWords($this->startTime);
-		$uptime = sprintf('I have been up for %d seconds (%s)', $secs, $timeAgoInWords);
-		return $uptime;
+		$reply = sprintf('I have been up for %d seconds (%s).', $secs, $timeAgoInWords);
+		return $reply;
+	}
+
+	public function processStats() {
+		$stats = $this->transporter->getStats();
+		$secs = time() - $stats['startTime'];
+		$timeAgoInWords = $this->TimeHelper->timeAgoInWords($this->startTime);
+		$reply = sprintf(
+			'I have been up for %d seconds (%s), ',
+			$secs, $timeAgoInWords
+			);
+		$reply .= sprintf(
+			'during which I have received %d instant messages, ' .
+			'and sent %d replies.',
+			$stats['received'], $stats['sent']
+			);
+		return $reply;
 	}
 
 	public function outgoing() {

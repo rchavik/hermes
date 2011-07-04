@@ -21,9 +21,16 @@ class YahooMessenger extends Object {
 
 	private $bot = false;
 
+	private $stats = false;
+
 	function __construct(&$controller = null) {
 		$this->controller = $controller;
 		$this->interval = $this->interval >= 5 ? $this->interval : 5;
+		$this->stats = array(
+			'startTime' => time(),
+			'sent' => 0,
+			'received' => 0,
+			);
 	}
 
 	function init($config) {
@@ -58,6 +65,10 @@ class YahooMessenger extends Object {
 		if ($this->engine->debug) {
 			$this->log($message);
 		}
+	}
+
+	function getStats() {
+		return $this->stats;
 	}
 
 	function connect() {
@@ -138,6 +149,7 @@ class YahooMessenger extends Object {
 			$this->log('> Sending reply message ');
 			$this->log('    '. $out);
 			$this->log('----------');
+			$this->stats['sent'] = ++$this->stats['sent'];
 			$engine->send_message($val['sender'], json_encode($out));
 		}
 	}
@@ -161,6 +173,9 @@ class YahooMessenger extends Object {
 					case 'buddyInfo':
 					case 'buddyAuthorize':
 					case 'message':
+						if ($key == 'message') {
+							$this->stats['received'] = ++$this->stats['received'];
+						}
 						$this->{$method}($val);
 						break;
 					default:
@@ -189,6 +204,7 @@ class YahooMessenger extends Object {
 				continue;
 			}
 			$this->engine->send_message($message['to'], json_encode($message['message']));
+			$this->stats['sent'] = ++$this->stats['sent'];
 		}
 	}
 }
