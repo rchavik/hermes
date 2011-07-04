@@ -79,8 +79,8 @@ class YahooMessenger extends Object {
 		$this->debug('> Fetching access token');
 		if (!$engine->fetch_access_token()) die('Fetching access token failed');
 
-		$this->debug('> Signon as: '. $this->username);
 		if (!$engine->signon()) die('Signon failed');
+		$this->log('> Signon as: '. $this->username);
 		$this->continue = $this->connected = true;
 
 	}
@@ -122,9 +122,9 @@ class YahooMessenger extends Object {
 	function handleMessage($val) {
 		//incoming message
 		$engine =& $this->engine;
-		$this->debug('+ Incoming message from: "'. $val['sender']. '" on "'. date('H:i:s', $val['timeStamp']). '"');
-		$this->debug('   '. $val['msg']);
-		$this->debug('----------');
+		$this->log('+ Incoming message from: "'. $val['sender']. '" on "'. date('H:i:s', $val['timeStamp']). '"');
+		$this->log('   '. $val['msg']);
+		$this->log('----------');
 
 		$words = explode(' ', trim(strtolower($val['msg'])));
 		$command = strtolower($words[0]);
@@ -216,6 +216,16 @@ class YahooMessenger extends Object {
 	function stop() {
 		$this->_notifyMasters('Super 6-4 is Going Down. See you later.');
 		$this->continue = false;
+	}
+
+	function log($msg, $type = LOG_ERROR) {
+		if (!empty($this->config['nick'])) {
+			$type = $this->config['nick'];
+		} else {
+			$type = 'error';
+		}
+		parent::log('type: ' . $type);
+		parent::log($msg, $type);
 	}
 
 	public function sendMessages($messages) {
