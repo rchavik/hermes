@@ -81,6 +81,7 @@ class YahooMessenger extends Object {
 
 		if (!$engine->signon()) die('Signon failed');
 		$this->log('> Signon as: '. $this->username);
+		$this->seq = -1;
 		$this->continue = $this->connected = true;
 
 	}
