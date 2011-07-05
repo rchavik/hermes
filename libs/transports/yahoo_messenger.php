@@ -157,6 +157,14 @@ class YahooMessenger extends Object {
 		}
 	}
 
+	function reconnectWhenExpired() {
+		$engine =& $this->engine;
+		$expires = $engine->expires();
+		if (time() + 120 > $expires) {
+			$this->connect();
+		}
+	}
+
 	function start() {
 		if (!$this->connected) { $this->connect(); }
 
@@ -164,7 +172,7 @@ class YahooMessenger extends Object {
 		$engine->change_presence(' ', 2);
 		$this->_notifyMasters('All units Irene. I say again, Irene.');
 		while ( $this->continue ) {
-			$this->refreshAccessToken();
+			$this->reconnectWhenExpired();
 			$resp = $this->engine->fetch_notification($this->seq+1);
 			$resp = $resp === false ? array() : $resp;
 			foreach ($resp as $row) {
