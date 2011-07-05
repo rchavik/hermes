@@ -89,7 +89,7 @@ class YahooMessenger extends Object {
 		$engine =& $this->engine;
 		$engine->signoff();
 		$this->connected = false;
-		$this->log("daemon terminated.");
+		$this->log('disconnected');
 	}
 
 	function handleBuddyAuthorize($val) {
@@ -159,6 +159,16 @@ class YahooMessenger extends Object {
 		$this->stats['sent'] = ++$this->stats['sent'];
 	}
 
+	function refreshAccessToken() {
+		$engine =& $this->engine;
+		$expires = $engine->expires();
+		if (time() + 120 > $expires) {
+			// perhaps this should use v1/session/keepalive ?
+			// xxx: messenger-sdk-php does not have keepalive method
+			$engine->fetch_access_token();
+		}
+	}
+
 	function start() {
 		if (!$this->connected) { $this->connect(); }
 
@@ -166,6 +176,7 @@ class YahooMessenger extends Object {
 		$engine->change_presence(' ', 2);
 		$this->_notifyMasters('All units Irene. I say again, Irene.');
 		while ( $this->continue ) {
+			$this->refreshAccessToken();
 			$resp = $this->engine->fetch_notification($this->seq+1);
 			$resp = $resp === false ? array() : $resp;
 			foreach ($resp as $row) {
@@ -198,6 +209,7 @@ class YahooMessenger extends Object {
 			sleep($this->interval);
 		}
 		$this->disconnect();
+		$this->log("daemon terminated.");
 	}
 
 	private function _notifyMasters($message) {
