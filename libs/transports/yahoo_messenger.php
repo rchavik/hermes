@@ -218,7 +218,9 @@ class YahooMessenger extends Object {
 	}
 
 	function stop() {
-		$this->_notifyMasters('Super 6-4 is Going Down. See you later.');
+		$uptime = time() - $this->stats['startTime'];
+		$msg = sprintf('Super 6-4 is Going Down after %d secs. See you later.', $uptime);
+		$this->_notifyMasters($msg);
 		$this->continue = false;
 	}
 
