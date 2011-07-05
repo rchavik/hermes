@@ -92,18 +92,6 @@ class YahooMessenger extends Object {
 		$this->log('disconnected');
 	}
 
-	function handleBuddyAuthorize($val) {
-		//incoming contact request
-
-		$engine =& $this->engine;
-		$this->log('Accept buddy request from: '. $val['sender']);
-		$this->log('----------');
-		if (!$engine->response_contact($val['sender'], true, 'Welcome to my list')) {
-			$engine->delete_contact($val['sender']);
-			$engine->response_contact($val['sender'], true, 'Welcome to my list');
-		}
-	}
-
 	function handleBuddyInfo($val) {
 		//contact list
 		$engine =& $this->engine;
@@ -188,7 +176,6 @@ class YahooMessenger extends Object {
 					$method = 'handle' . ucfirst($key);
 					switch ($key) {
 					case 'buddyInfo':
-					case 'buddyAuthorize':
 					case 'message':
 						if ($key == 'message') {
 							$this->stats['received'] = ++$this->stats['received'];
