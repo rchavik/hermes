@@ -11,7 +11,7 @@ EOF;
 	}
 
 	function configure($params) {
-		Configure::load('Messaging.bots');
+		Configure::load('bots');
 		$config = Configure::read('Messaging');
 		$config = Set::extract('/bots[nick=' . $params[0] .']', $config);
 		if (empty($config)) {
@@ -25,7 +25,7 @@ EOF;
 
 	function startBot() {
 		$class = $this->config['driver'];
-		App::import('Lib', $class);
+		App::uses($class, 'Transports');
 		$Bot = new $class($this);
 		$Bot->init($this->config);
 		$Bot->start();
@@ -36,6 +36,7 @@ EOF;
 			$this->help();
 			exit;
 		}
+
 		$this->configure($this->args);
 		switch ($this->config['driver']) {
 		case 'YahooMessenger':

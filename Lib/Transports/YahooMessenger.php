@@ -56,7 +56,7 @@ class YahooMessenger extends Object {
 
 		if ($bot !== false) {
 			$botClass = $bot . 'Bot';
-			App::import('Lib', $botClass);
+			App::uses($botClass, 'Bots');
 			$this->bot = new $botClass($this, $this->config);
 		}
 	}

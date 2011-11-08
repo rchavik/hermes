@@ -1,5 +1,5 @@
 <?php
-App::import('Helper', 'Time');
+App::uses('TimeHelper', 'View/Helper');
 
 class LameBot extends Object {
 
@@ -16,7 +16,9 @@ class LameBot extends Object {
 		parent::__construct();
 		$this->transporter = $transporter;
 		$this->config = $config;
-		$this->TimeHelper = new TimeHelper;
+		App::uses('View', 'View');
+		$this->_View = new View(null);
+		$this->TimeHelper = new TimeHelper($this->_View);
 	}
 
 	public function processAbout() {
