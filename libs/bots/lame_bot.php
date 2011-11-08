@@ -48,6 +48,21 @@ class LameBot extends Object {
 		return $reply;
 	}
 
+	function getOutgoingFiles($path){
+		$dir = opendir($path);
+		$list = array();
+		$data_path = $path;
+		while ($file = readdir($dir)) {
+			if ($file != '.' && $file != '..' && substr($file, -4) == '.out') {
+				$ctime = filectime($data_path . $file) . ',' . $file;
+				$list[$ctime] = $path .DS. $file;
+			}
+		}
+		closedir($dir);
+		krsort($list);
+		return $list;
+	}
+
 	public function outgoing() {
 		$config = $this->config;
 		$outgoing = array();
@@ -57,8 +72,8 @@ class LameBot extends Object {
 		}
 
 		$regex = sprintf('/%s.*\.out$/', $config['outgoing_prefix']);
-		$files = preg_find($regex, $config['outgoing_path'], PREG_FIND_RETURNASSOC|PREG_FIND_SORTMODIFIED);
-		foreach ($files as $file => $fileInfo) {
+		$files = $this->getOutgoingFiles($config['outgoing_path']);
+		foreach ($files as $key => $file) {
 			$lines = file_get_contents($file);
 			unlink($file);
 			$debris = explode("\t", $lines, 2);
