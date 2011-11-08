@@ -1,5 +1,4 @@
 <?php
-App::import('Vendor', 'preg_find');
 App::import('Helper', 'Time');
 
 class LameBot extends Object {
